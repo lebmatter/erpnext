@@ -7,6 +7,7 @@ import frappe
 from frappe.model.document import Document
 import json
 from frappe.utils.file_manager import save_file
+from frappe.utils import flt
 
 class GSTR3BReport(Document):
 	pass
@@ -22,6 +23,11 @@ def get_data(company, address, month):
 					"ty": "GST",
 					"intra": 0,
 					"inter": 0
+				},
+				{
+					"ty": "NONGST",
+					"inter": 0,
+					"intra": 0
 				}
 			]
 		},
@@ -32,7 +38,11 @@ def get_data(company, address, month):
 				"iamt": 0
 			},
 			"osup_nil_exmp": {
-				"txval": 0
+				"txval": 0,
+				"iamt": 0,
+				"camt": 0,
+				"samt": 0,
+				"csamt": 0
 			},
 			"osup_det": {
 				"samt": 0,
@@ -47,126 +57,19 @@ def get_data(company, address, month):
 				"txval": 0,
 				"camt": 0,
 				"iamt": 0
+			},
+			"osup_nongst": {
+				"txval": 0,
+				"iamt": 0,
+				"camt": 0,
+				"samt": 0,
+				"csamt": 0
 			}
 		},
 		"inter_sup": {
-			"unreg_details": [
-				{
-					"pos": "26",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "01",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "17",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "34",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "30",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "18",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "20",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "22",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "04",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "08",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "03",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "24",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "36",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "23",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "32",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "09",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "06",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "19",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "07",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "05",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "29",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "37",
-					"txval": 0,
-					"iamt": 0
-				},
-				{
-					"pos": "33",
-					"txval": 0,
-					"iamt": 0
-				}
-			]
+			"unreg_details": [],
+			"comp_details": [],
+			"uin_details": []
 		},
 		"itc_elg": {
 			"itc_avl": [
@@ -192,6 +95,13 @@ def get_data(company, address, month):
 				"iamt": 0
 			},
 			{
+				"ty": "ISD",
+				"iamt": 1,
+				"camt": 1,
+				"samt": 1,
+				"csamt": 1
+			},
+			{
 				"samt": 0,
 				"csamt": 0,
 				"ty": "OTH",
@@ -200,31 +110,74 @@ def get_data(company, address, month):
 			}
 			],
 			"itc_net": {
-			"samt": 0,
-			"csamt": 0,
-			"camt": 0,
-			"iamt": 0
+				"samt": 0,
+				"csamt": 0,
+				"camt": 0,
+				"iamt": 0
+			},
+			"itc_inelg": [
+			{
+				"ty": "RUL",
+				"iamt": 0,
+				"camt": 0,
+				"samt": 0,
+				"csamt": 0
+			},
+			{
+				"ty": "OTH",
+				"iamt": 0,
+				"camt": 0,
+				"samt": 0,
+				"csamt": 0
 			}
+		]
 		}
 	}
-
-	gst_account_heads = frappe.db.get_all("GST Account",
-		fields=["cgst_account", "sgst_account", "igst_account"],
-		filters={
-			"company":company
-		})
-
-	tax_details = frappe.db.sql("""
-		select sum(s.grand_total), t.tax_amount
-		from `tabSales Invoice` s , `tabSales Taxes and Charges` t
-		where t.parent = s.name
-		group by t.account_head """)
 
 	gst_details = get_company_gst_details(address)
 
 	report_dict["gstin"] = gst_details.get("gstin")
 
+	account_heads = get_account_heads(company)
+
+	outward_supply_tax_amounts = get_tax_amounts("Sales Invoice", "Regular")
+
+	report_dict = prepare_data(report_dict, "sup_details", "osup_det", outward_supply_tax_amounts, account_heads)
+
+	inward_supply_tax_amounts = get_tax_amounts("Purchase Invoice", "Regular", reverse_charge="Y")
+
+	report_dict = prepare_data(report_dict, "sup_details", "isup_rev", inward_supply_tax_amounts, account_heads)
+
 	return report_dict
+
+def prepare_data(report_dict, supply_type, supply_category, tax_amounts, account_heads):
+
+	tax_details = {}
+	for d in tax_amounts:
+		tax_details.setdefault(
+			d.account_head,{
+				"total_taxable": d.get("total"),
+				"amount": d.get("tax_amount")
+			}
+		)
+
+		report_dict['sup_details']['osup_det']['txval'] += d.tax_amount
+
+	report_dict[supply_type][supply_category]['samt'] = flt(tax_details.get(account_heads.get("sgst_account"), {}).get("amount"))
+	report_dict[supply_type][supply_category]['csamt'] = flt(tax_details.get(account_heads.get("cess_account"), {}).get("amount"))
+	report_dict[supply_type][supply_category]['camt'] = flt(tax_details.get(account_heads.get("cgst_account"), {}).get("amount"))
+	report_dict[supply_type][supply_category]['iamt'] = flt(tax_details.get(account_heads.get("igst_account"), {}).get("amount"))
+
+	return report_dict
+
+def get_tax_amounts(doctype, gst_category, reverse_charge="N"):
+
+	return frappe.db.sql("""
+		select sum(s.grand_total) as total, sum(t.tax_amount) as tax_amount, t.account_head
+		from `tab{doctype}` s , `tabSales Taxes and Charges` t
+		where t.parent = s.name and s.reverse_charge = %s
+		group by t.account_head, s.invoice_type
+		""".format(doctype=doctype), (reverse_charge), as_dict=1)
 
 def get_company_gst_details(address):
 
@@ -233,6 +186,15 @@ def get_company_gst_details(address):
 		filters={
 			"name":address
 		})[0]
+
+def get_account_heads(company):
+
+	return frappe.db.get_all("GST Account",
+		fields=["cgst_account", "sgst_account", "igst_account", "cess_account"],
+		filters={
+			"company":company
+		})[0]
+
 
 @frappe.whitelist()
 def view_report(company, address, month):
