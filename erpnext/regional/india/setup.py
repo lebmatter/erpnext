@@ -103,9 +103,9 @@ def make_custom_fields(update=True):
 		dict(fieldname='reverse_charge', label='Reverse Charge',
 			fieldtype='Select', insert_after='invoice_copy', print_hide=1,
 			options='Y\nN', default='N'),
-		dict(fieldname='GST Category', label='GST Category',
-			fieldtype='Select', insert_after='invoice_copy', print_hide=1,
-			options='Registered Regular\nRegistered Composition\nUnregistered\nSEZ\nExport\nDeemed Export', default='Registered Regular'),
+		dict(fieldname='gst_category', label='GST Category',
+			fieldtype='Data', insert_after='invoice_copy', print_hide=1,
+			fetch_from='customer.gst_category'),
 		dict(fieldname='export_type', label='Export Type',
 			fieldtype='Select', insert_after='invoice_type', print_hide=1,
 			depends_on='eval:in_list(["SEZ", "Export", "Deemed Export"], doc.invoice_type)',
@@ -301,6 +301,24 @@ def make_custom_fields(update=True):
 				'fieldtype': 'Data',
 				'insert_after': 'supplier_type',
 				'depends_on': 'eval:doc.is_transporter'
+			},
+			{
+				'fieldname': 'gst_category',
+				'label': 'GST Category',
+				'fieldtype': 'Select',
+				'insert_after': 'gst_transporter_id',
+				'options': 'Registered Regular\nRegistered Composition\nUnregistered\nSEZ\nOverseas',
+				'default': 'Registered Regular'
+			}
+		],
+		'Customer': [
+			{
+				'fieldname': 'gst_category',
+				'label': 'GST Category',
+				'fieldtype': 'Select',
+				'insert_after': 'customer_type',
+				'options': 'Registered Regular\nRegistered Composition\nUnregistered\nSEZ\nOverseas\nConsumer\nDeemed Export',
+				'default': 'Registered Regular'
 			}
 		]
 	}
