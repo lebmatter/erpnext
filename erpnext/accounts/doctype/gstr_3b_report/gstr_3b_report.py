@@ -6,14 +6,15 @@ from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
 import json
-from frappe.utils import flt
+from six import iteritems
+from frappe.utils import flt, getdate
 
 class GSTR3BReport(Document):
 	def before_save(self):
 		self.get_data()
 
 	def get_data(self):
-		report_dict = {
+		self.report_dict = {
 			"gstin": "",
 			"ret_period": "",
 			"inward_sup": {
@@ -134,51 +135,92 @@ class GSTR3BReport(Document):
 		}
 
 		gst_details = get_company_gst_details(self.company_address)
+		self.report_dict["gstin"] = gst_details.get("gstin")
+		self.report_dict["ret_period"] = get_period(self.month, with_year=True)
 
-		report_dict["gstin"] = gst_details.get("gstin")
+		self.account_heads = get_account_heads(self.company)
 
-		account_heads = get_account_heads(self.company)
+		outward_supply_tax_amounts = get_tax_amounts("Sales Invoice", self.month)
+		inward_supply_tax_amounts = get_tax_amounts("Purchase Invoice", self.month, reverse_charge="Y")
 
-		outward_supply_tax_amounts = get_tax_amounts("Sales Invoice", "Registered Regular")
+		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_det", "Registered Regular")
+		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_zero", "SEZ")
+		self.prepare_data("Purchase Invoice", inward_supply_tax_amounts, "sup_details", "isup_rev", "Registered Regular")
 
-		report_dict = prepare_data(report_dict, "sup_details", "osup_det", outward_supply_tax_amounts, account_heads)
 
-		inward_supply_tax_amounts = get_tax_amounts("Purchase Invoice", " Registered Regular", reverse_charge="Y")
 
-		report_dict = prepare_data(report_dict, "sup_details", "isup_rev", inward_supply_tax_amounts, account_heads)
+		self.json_output = frappe.as_json(self.report_dict)
 
-		self.json_output = frappe.as_json(report_dict)
+	def prepare_data(self, doctype, tax_details, supply_type, supply_category, gst_category):
 
-def prepare_tax_deatils()
+		account_map = {
+			'sgst_account': 'samt',
+			'cess_account': 'csamt',
+			'cgst_account': 'camt',
+			'igst_account': 'iamt'
+		}
 
-def prepare_data(report_dict, supply_type, supply_category, tax_amounts, account_heads):
+		self.report_dict[supply_type][supply_category]['txval'] = flt(get_total_taxable_value(doctype, gst_category, self.month))
+
+		for k, v in iteritems(account_map):
+			if v in self.report_dict.get(supply_type).get(supply_category):
+				self.report_dict[supply_type][supply_category][v] = \
+					flt(tax_details.get((self.account_heads.get(k), gst_category), {}).get("amount"))
+
+def get_total_taxable_value(doctype, gst_category, month):
+
+	month_no = get_period(month)
+
+	return frappe.db.sql("""
+		select sum(grand_total) as total
+		from `tab{doctype}`
+		where docstatus = 1 and month(posting_date) = %s and gst_category = %s
+		"""
+		.format(doctype = doctype), (month_no, gst_category), as_dict=1)[0].total
+
+def get_tax_amounts(doctype, month, reverse_charge="N"):
+
+	month_no = get_period(month)
+
+	tax_amounts = frappe.db.sql("""
+		select s.gst_category, sum(t.tax_amount) as tax_amount, t.account_head
+		from `tab{doctype}` s , `tabSales Taxes and Charges` t
+		where s.docstatus = 1 and t.parent = s.name and s.reverse_charge = %s and month(s.posting_date) = %s
+		group by t.account_head, s.gst_category
+		""".format(doctype=doctype), (reverse_charge, month_no), as_dict=1)
 
 	tax_details = {}
+
 	for d in tax_amounts:
 		tax_details.setdefault(
-			d.account_head,{
-				"total_taxable": d.get("total"),
+			(d.account_head,d.gst_category),{
 				"amount": d.get("tax_amount")
 			}
 		)
 
-		report_dict['sup_details']['osup_det']['txval'] += d.tax_amount
+	return tax_details
 
-	report_dict[supply_type][supply_category]['samt'] = flt(tax_details.get(account_heads.get("sgst_account"), {}).get("amount"))
-	report_dict[supply_type][supply_category]['csamt'] = flt(tax_details.get(account_heads.get("cess_account"), {}).get("amount"))
-	report_dict[supply_type][supply_category]['camt'] = flt(tax_details.get(account_heads.get("cgst_account"), {}).get("amount"))
-	report_dict[supply_type][supply_category]['iamt'] = flt(tax_details.get(account_heads.get("igst_account"), {}).get("amount"))
+def get_period(month, with_year=False):
 
-	return report_dict
+	month_no = {
+		"January": 1,
+		"February": 2,
+		"March": 3,
+		"April": 4,
+		"May": 5,
+		"June": 6,
+		"July": 7,
+		"August": 8,
+		"September": 9,
+		"October": 10,
+		"November": 11,
+		"December": 12
+	}.get(month)
 
-def get_tax_amounts(doctype, gst_category, reverse_charge="N"):
-
-	return frappe.db.sql("""
-		select sum(s.grand_total) as total, sum(t.tax_amount) as tax_amount, t.account_head
-		from `tab{doctype}` s , `tabSales Taxes and Charges` t
-		where t.parent = s.name and s.reverse_charge = %s
-		group by t.account_head, s.gst_category
-		""".format(doctype=doctype), (reverse_charge), as_dict=1)
+	if with_year:
+		return str(month_no).zfill(2) + str(getdate().year)
+	else:
+		return month_no
 
 def get_company_gst_details(address):
 
@@ -201,7 +243,7 @@ def get_account_heads(company):
 def view_report(name):
 
 	json_data = frappe.get_value("GSTR 3B Report", name, 'json_output')
-	return json_data
+	return json.loads(json_data)
 
 @frappe.whitelist()
 def make_json(name):
