@@ -103,12 +103,9 @@ def make_custom_fields(update=True):
 		dict(fieldname='reverse_charge', label='Reverse Charge',
 			fieldtype='Select', insert_after='invoice_copy', print_hide=1,
 			options='Y\nN', default='N'),
-		dict(fieldname='gst_category', label='GST Category',
-			fieldtype='Data', insert_after='invoice_copy', print_hide=1,
-			fetch_from='customer.gst_category'),
 		dict(fieldname='export_type', label='Export Type',
-			fieldtype='Select', insert_after='invoice_type', print_hide=1,
-			depends_on='eval:in_list(["SEZ", "Export", "Deemed Export"], doc.invoice_type)',
+			fieldtype='Select', insert_after='gst_category', print_hide=1,
+			depends_on='eval:in_list(["SEZ", "Overseas", "Deemed Export"], doc.invoice_type)',
 			options='\nWith Payment of Tax\nWithout Payment of Tax'),
 		dict(fieldname='ecommerce_gstin', label='E-commerce GSTIN',
 			fieldtype='Data', insert_after='export_type', print_hide=1),
@@ -129,6 +126,9 @@ def make_custom_fields(update=True):
 			dict(fieldname='place_of_supply', label='Place of Supply',
 				fieldtype='Data', insert_after='shipping_address',
 				print_hide=1, read_only=0),
+			dict(fieldname='gst_category', label='GST Category',
+				fieldtype='Data', insert_after='reverse_charge', print_hide=1,
+				fetch_from='supplier.gst_category'),
 		]
 
 	purchase_invoice_itc_fields = [
@@ -158,6 +158,9 @@ def make_custom_fields(update=True):
 			dict(fieldname='company_gstin', label='Company GSTIN',
 				fieldtype='Data', insert_after='company_address',
 				fetch_from='company_address.gstin', print_hide=1),
+			dict(fieldname='gst_category', label='GST Category',
+				fieldtype='Data', insert_after='reverse_charge', print_hide=1,
+				fetch_from='customer.gst_category'),
 		]
 
 	sales_invoice_shipping_fields = [
