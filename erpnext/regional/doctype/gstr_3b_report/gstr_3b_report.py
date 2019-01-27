@@ -65,41 +65,41 @@ class GSTR3BReport(Document):
 			},
 			"itc_elg": {
 				"itc_avl": [
-				{
-					"csamt": 0,
-					"samt": 0,
-					"ty": "IMPG",
-					"camt": 0,
-					"iamt": 0
-				},
-				{
-					"csamt": 0,
-					"samt": 0,
-					"ty": "IMPS",
-					"camt": 0,
-					"iamt": 0
-				},
-				{
-					"samt": 0,
-					"csamt": 0,
-					"ty": "ISRC",
-					"camt": 0,
-					"iamt": 0
-				},
-				{
-					"ty": "ISD",
-					"iamt": 1,
-					"camt": 1,
-					"samt": 1,
-					"csamt": 1
-				},
-				{
-					"samt": 0,
-					"csamt": 0,
-					"ty": "OTH",
-					"camt": 0,
-					"iamt": 0
-				}
+					{
+						"csamt": 0,
+						"samt": 0,
+						"ty": "IMPG",
+						"camt": 0,
+						"iamt": 0
+					},
+					{
+						"csamt": 0,
+						"samt": 0,
+						"ty": "IMPS",
+						"camt": 0,
+						"iamt": 0
+					},
+					{
+						"samt": 0,
+						"csamt": 0,
+						"ty": "ISRC",
+						"camt": 0,
+						"iamt": 0
+					},
+					{
+						"ty": "ISD",
+						"iamt": 1,
+						"camt": 1,
+						"samt": 1,
+						"csamt": 1
+					},
+					{
+						"samt": 0,
+						"csamt": 0,
+						"ty": "OTH",
+						"camt": 0,
+						"iamt": 0
+					}
 				],
 				"itc_net": {
 					"samt": 0,
@@ -108,21 +108,21 @@ class GSTR3BReport(Document):
 					"iamt": 0
 				},
 				"itc_inelg": [
-				{
-					"ty": "RUL",
-					"iamt": 0,
-					"camt": 0,
-					"samt": 0,
-					"csamt": 0
-				},
-				{
-					"ty": "OTH",
-					"iamt": 0,
-					"camt": 0,
-					"samt": 0,
-					"csamt": 0
-				}
-			]
+					{
+						"ty": "RUL",
+						"iamt": 0,
+						"camt": 0,
+						"samt": 0,
+						"csamt": 0
+					},
+					{
+						"ty": "OTH",
+						"iamt": 0,
+						"camt": 0,
+						"samt": 0,
+						"csamt": 0
+					}
+				]
 			}
 		}
 
@@ -134,13 +134,33 @@ class GSTR3BReport(Document):
 
 		outward_supply_tax_amounts = get_tax_amounts("Sales Invoice", self.month)
 		inward_supply_tax_amounts = get_tax_amounts("Purchase Invoice", self.month, reverse_charge="Y")
+		itc_details = get_itc_details()
 
 		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_det", "Registered Regular")
 		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_zero", "SEZ")
 		self.prepare_data("Purchase Invoice", inward_supply_tax_amounts, "sup_details", "isup_rev", "Registered Regular")
 		self.report_dict["sup_details"]["osup_nongst"]["txval"] = get_non_gst_supply_value()
 
+
+
 		self.json_output = frappe.as_json(self.report_dict)
+
+	def set_itc_details(self, itc_details):
+
+		itc_type_map = {
+			'IMPG': 'Import Of Capital Goods',
+			'IMPS': 'Import Of Service',
+			'ISD': 'Input Service Distributor',
+			'OTH': 'Others'
+		}
+
+		for d in self.report_dict["itc_elg"]["itc_avl"]:
+			d["iamt"] = itc_details.get(d["ty"]).get("iamt")
+			d["camt"] = itc_details.get(d["ty"]).get("camt")
+			d["samt"] = itc_details.get(d["ty"]).get("samt")
+			d["csamt"] = itc_details.get(d["ty"]).get("csamt")
+
+
 
 	def prepare_data(self, doctype, tax_details, supply_type, supply_category, gst_category):
 
@@ -171,7 +191,7 @@ def get_total_taxable_value(doctype, gst_category, month):
 
 def get_itc_details():
 
-	return frappe.get_all('Purchase Invoice',
+	itc_amount = frappe.get_all('Purchase Invoice',
 		fields = ["sum(itc_integrated_tax) as itc_iamt",
 			"sum(itc_central_tax) as itc_camt",
 			"sum(itc_state_tax) as itc_samt",
@@ -182,6 +202,19 @@ def get_itc_details():
 			"docstatus":1,
 		},
 		group_by = 'eligibility_for_itc')
+
+	itc_details = {}
+
+	for d in itc_amount:
+		itc_details.set_default(d.eligibility_for_itc,{
+			"itc_iamt": d.itc_iamt,
+			"itc_camt": d.itc_camt,
+			"itc_samt": d.itc_samt,
+			"itc_csamt": d.itc_csamt
+		})
+
+	return itc_details
+
 
 def get_non_gst_supply_value():
 
