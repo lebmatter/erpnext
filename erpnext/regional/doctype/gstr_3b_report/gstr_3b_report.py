@@ -38,11 +38,7 @@ class GSTR3BReport(Document):
 					"iamt": 0
 				},
 				"osup_nil_exmp": {
-					"txval": 0,
-					"iamt": 0,
-					"camt": 0,
-					"samt": 0,
-					"csamt": 0
+					"txval": 0
 				},
 				"osup_det": {
 					"samt": 0,
@@ -60,10 +56,6 @@ class GSTR3BReport(Document):
 				},
 				"osup_nongst": {
 					"txval": 0,
-					"iamt": 0,
-					"camt": 0,
-					"samt": 0,
-					"csamt": 0
 				}
 			},
 			"inter_sup": {
@@ -146,8 +138,7 @@ class GSTR3BReport(Document):
 		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_det", "Registered Regular")
 		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_zero", "SEZ")
 		self.prepare_data("Purchase Invoice", inward_supply_tax_amounts, "sup_details", "isup_rev", "Registered Regular")
-
-
+		self.report_dict["sup_details"]["osup_nongst"]["txval"] = get_non_gst_supply_value()
 
 		self.json_output = frappe.as_json(self.report_dict)
 
@@ -177,6 +168,32 @@ def get_total_taxable_value(doctype, gst_category, month):
 		where docstatus = 1 and month(posting_date) = %s and gst_category = %s
 		"""
 		.format(doctype = doctype), (month_no, gst_category), as_dict=1)[0].total
+
+def get_itc_details():
+
+	return frappe.get_all('Purchase Invoice',
+		fields = ["sum(itc_integrated_tax) as itc_iamt",
+			"sum(itc_central_tax) as itc_camt",
+			"sum(itc_state_tax) as itc_samt",
+			"sum(itc_cess_amount) as itc_csamt",
+			"eligibility_for_itc"
+		],
+		filters = {
+			"docstatus":1,
+		},
+		group_by = 'eligibility_for_itc')
+
+def get_non_gst_supply_value():
+
+	return frappe.db.sql("""
+		select sum(base_amount) as total from
+		`tabSales Invoice Item` i, `tabSales Invoice` s
+		where
+		s.docstatus = 1 and
+		i.parent = s.name and
+		i.item_tax_rate = {} and
+		s.taxes_and_charges IS NULL""", as_dict=1)[0].total
+
 
 def get_tax_amounts(doctype, month, reverse_charge="N"):
 
@@ -224,7 +241,7 @@ def get_period(month, with_year=False):
 
 def get_company_gst_details(address):
 
-	return frappe.db.get_all("Address",
+	return frappe.get_all("Address",
 		fields=["gstin", "gst_state", "gst_state_number"],
 		filters={
 			"name":address
@@ -232,7 +249,7 @@ def get_company_gst_details(address):
 
 def get_account_heads(company):
 
-	return frappe.db.get_all("GST Account",
+	return frappe.get_all("GST Account",
 		fields=["cgst_account", "sgst_account", "igst_account", "cess_account"],
 		filters={
 			"company":company

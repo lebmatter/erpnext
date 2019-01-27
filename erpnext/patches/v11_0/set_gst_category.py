@@ -37,6 +37,16 @@ def execute():
 			for old, new in update_map.items():
 				frappe.db.set_value(doctype, { 'invoice_type': old }, 'gst_category', new)
 
+	itc_update_map = {
+		"ineligible": "Ineligible",
+		"input service": "Import Of Service",
+		"capital goods": "Import Of Capital Goods",
+		"input": "Input Service Distributor"
+	}
+
+	for old, new in itc_update_map.items():
+		frappe.db.set_value('Purchase Invoice', {'eligibility_for_itc': old}, 'eligibility_for_itc', new)
+
 	frappe.delete_doc('Custom Field', 'Sales Invoice-invoice_type')
 	frappe.delete_doc('Custom Field', 'Purchase Invoice-invoice_type')
 

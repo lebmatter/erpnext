@@ -2,7 +2,6 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('GSTR 3B Report', {
-
 	refresh : function(frm){
 		if(!frm.is_new()) {
 			frm.add_custom_button(__('Download JSON'), function() {
