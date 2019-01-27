@@ -206,7 +206,7 @@ def get_itc_details():
 	itc_details = {}
 
 	for d in itc_amount:
-		itc_details.set_default(d.eligibility_for_itc,{
+		itc_details.setdefault(d.eligibility_for_itc,{
 			"itc_iamt": d.itc_iamt,
 			"itc_camt": d.itc_camt,
 			"itc_samt": d.itc_samt,
