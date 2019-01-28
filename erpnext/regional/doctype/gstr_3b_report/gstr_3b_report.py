@@ -140,7 +140,7 @@ class GSTR3BReport(Document):
 		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_zero", "SEZ")
 		self.prepare_data("Purchase Invoice", inward_supply_tax_amounts, "sup_details", "isup_rev", "Registered Regular")
 		self.report_dict["sup_details"]["osup_nongst"]["txval"] = get_non_gst_supply_value()
-
+		self.set_itc_details(itc_details)
 
 
 		self.json_output = frappe.as_json(self.report_dict)
@@ -155,10 +155,10 @@ class GSTR3BReport(Document):
 		}
 
 		for d in self.report_dict["itc_elg"]["itc_avl"]:
-			d["iamt"] = itc_details.get(d["ty"]).get("iamt")
-			d["camt"] = itc_details.get(d["ty"]).get("camt")
-			d["samt"] = itc_details.get(d["ty"]).get("samt")
-			d["csamt"] = itc_details.get(d["ty"]).get("csamt")
+			d["iamt"] = itc_details.get(itc_type_map.get(d["ty"])).get("iamt")
+			d["camt"] = itc_details.get(itc_type_map.get(d["ty"])).get("camt")
+			d["samt"] = itc_details.get(itc_type_map.get(d["ty"])).get("samt")
+			d["csamt"] = itc_details.get(itc_type_map.get(d["ty"])).get("csamt")
 
 
 
