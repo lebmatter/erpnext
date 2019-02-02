@@ -155,11 +155,10 @@ class GSTR3BReport(Document):
 		}
 
 		for d in self.report_dict["itc_elg"]["itc_avl"]:
-			d["iamt"] = itc_details.get(itc_type_map.get(d["ty"])).get("iamt")
-			d["camt"] = itc_details.get(itc_type_map.get(d["ty"])).get("camt")
-			d["samt"] = itc_details.get(itc_type_map.get(d["ty"])).get("samt")
-			d["csamt"] = itc_details.get(itc_type_map.get(d["ty"])).get("csamt")
-
+			d["iamt"] = flt(itc_details.get(itc_type_map.get(d["ty"]), {}).get("itc_iamt"))
+			d["camt"] = flt(itc_details.get(itc_type_map.get(d["ty"]), {}).get("itc_camt"))
+			d["samt"] = flt(itc_details.get(itc_type_map.get(d["ty"]), {}).get("itc_samt"))
+			d["csamt"] = flt(itc_details.get(itc_type_map.get(d["ty"]), {}).get("itc_csamt"))
 
 
 	def prepare_data(self, doctype, tax_details, supply_type, supply_category, gst_category):
@@ -189,7 +188,7 @@ def get_total_taxable_value(doctype, gst_category, month):
 		"""
 		.format(doctype = doctype), (month_no, gst_category), as_dict=1)[0].total
 
-def get_itc_details():
+def get_itc_details(reverse_charge='N'):
 
 	itc_amount = frappe.get_all('Purchase Invoice',
 		fields = ["sum(itc_integrated_tax) as itc_iamt",
@@ -200,6 +199,7 @@ def get_itc_details():
 		],
 		filters = {
 			"docstatus":1,
+			"reverse_charge": reverse_charge
 		},
 		group_by = 'eligibility_for_itc')
 
@@ -215,7 +215,6 @@ def get_itc_details():
 
 	return itc_details
 
-
 def get_non_gst_supply_value():
 
 	return frappe.db.sql("""
@@ -224,7 +223,7 @@ def get_non_gst_supply_value():
 		where
 		s.docstatus = 1 and
 		i.parent = s.name and
-		i.item_tax_rate = {} and
+		i.item_tax_rate = '{}' and
 		s.taxes_and_charges IS NULL""", as_dict=1)[0].total
 
 
