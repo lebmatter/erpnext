@@ -136,10 +136,10 @@ class GSTR3BReport(Document):
 		inward_supply_tax_amounts = get_tax_amounts("Purchase Invoice", self.month, reverse_charge="Y")
 		itc_details = get_itc_details()
 
-		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_det", "Registered Regular")
-		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_zero", "SEZ")
-		self.prepare_data("Purchase Invoice", inward_supply_tax_amounts, "sup_details", "isup_rev", "Registered Regular")
-		self.report_dict["sup_details"]["osup_nongst"]["txval"] = get_non_gst_supply_value()
+		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_det", ["Registered Regular"])
+		self.prepare_data("Sales Invoice", outward_supply_tax_amounts, "sup_details", "osup_zero", ["SEZ", "Deemed Export", "Overseas"])
+		self.prepare_data("Purchase Invoice", inward_supply_tax_amounts, "sup_details", "isup_rev", ["Registered Regular"], reverse_charge="Y")
+		self.report_dict["sup_details"]["osup_nil_exmp"]["txval"] = get_nil_rated_supply_value()
 		self.set_itc_details(itc_details)
 
 
@@ -161,7 +161,7 @@ class GSTR3BReport(Document):
 			d["csamt"] = flt(itc_details.get(itc_type_map.get(d["ty"]), {}).get("itc_csamt"))
 
 
-	def prepare_data(self, doctype, tax_details, supply_type, supply_category, gst_category):
+	def prepare_data(self, doctype, tax_details, supply_type, supply_category, gst_category_list, reverse_charge="N"):
 
 		account_map = {
 			'sgst_account': 'samt',
@@ -170,43 +170,55 @@ class GSTR3BReport(Document):
 			'igst_account': 'iamt'
 		}
 
-		self.report_dict[supply_type][supply_category]['txval'] = flt(get_total_taxable_value(doctype, gst_category, self.month))
+		total_taxable_value = get_total_taxable_value(doctype, self.month, reverse_charge)
+		
+		for gst_category in gst_category_list:
+			for k, v in iteritems(account_map):
+				if v in self.report_dict.get(supply_type).get(supply_category):
+					self.report_dict[supply_type][supply_category][v] += \
+						flt(tax_details.get((self.account_heads.get(k), gst_category), {}).get("amount"))
+				
+			self.report_dict[supply_type][supply_category]["txval"] += \
+				flt(total_taxable_value.get(gst_category, 0))
 
-		for k, v in iteritems(account_map):
-			if v in self.report_dict.get(supply_type).get(supply_category):
-				self.report_dict[supply_type][supply_category][v] = \
-					flt(tax_details.get((self.account_heads.get(k), gst_category), {}).get("amount"))
-
-def get_total_taxable_value(doctype, gst_category, month):
+def get_total_taxable_value(doctype, month, reverse_charge):
 
 	month_no = get_period(month)
 
-	return frappe.db.sql("""
-		select sum(grand_total) as total
+	return frappe._dict(frappe.db.sql("""
+		select gst_category, sum(grand_total) as total
 		from `tab{doctype}`
-		where docstatus = 1 and month(posting_date) = %s and gst_category = %s
+		where docstatus = 1 and month(posting_date) = %s and reverse_charge = %s
+		group by gst_category 
 		"""
-		.format(doctype = doctype), (month_no, gst_category), as_dict=1)[0].total
+		.format(doctype = doctype), (month_no, reverse_charge)))
 
 def get_itc_details(reverse_charge='N'):
 
-	itc_amount = frappe.get_all('Purchase Invoice',
-		fields = ["sum(itc_integrated_tax) as itc_iamt",
-			"sum(itc_central_tax) as itc_camt",
-			"sum(itc_state_tax) as itc_samt",
-			"sum(itc_cess_amount) as itc_csamt",
-			"eligibility_for_itc"
-		],
-		filters = {
-			"docstatus":1,
-			"reverse_charge": reverse_charge
-		},
-		group_by = 'eligibility_for_itc')
+	itc_amount = frappe.db.sql("""
+		select sum(itc_integrated_tax) as itc_iamt, sum(itc_central_tax) as itc_camt,
+		sum(itc_state_tax) as itc_samt, sum(itc_cess_amount) as itc_csamt, eligibility_for_itc, 
+		reverse_charge 
+		from `tabPurchase Invoice`
+		where docstatus = 1
+		group by eligibility_for_itc, reverse_charge""", as_dict=1)
+
+	# itc_amount = frappe.get_all('Purchase Invoice',
+	# 	fields = ["sum(itc_integrated_tax) as itc_iamt",
+	# 		"sum(itc_central_tax) as itc_camt",
+	# 		"sum(itc_state_tax) as itc_samt",
+	# 		"sum(itc_cess_amount) as itc_csamt",
+	# 		"eligibility_for_itc"
+	# 	],
+	# 	filters = {
+	# 		"docstatus":1,
+	# 	},
+	# 	group_by = ['eligibility_for_itc', 'reverse_charge'])
 
 	itc_details = {}
 
 	for d in itc_amount:
-		itc_details.setdefault(d.eligibility_for_itc,{
+		itc_details.setdefault((d.eligibility_for_itc, d.reverse_charge),{
 			"itc_iamt": d.itc_iamt,
 			"itc_camt": d.itc_camt,
 			"itc_samt": d.itc_samt,
@@ -215,7 +227,7 @@ def get_itc_details(reverse_charge='N'):
 
 	return itc_details
 
-def get_non_gst_supply_value():
+def get_nil_rated_supply_value():
 
 	return frappe.db.sql("""
 		select sum(base_amount) as total from
@@ -231,19 +243,24 @@ def get_tax_amounts(doctype, month, reverse_charge="N"):
 
 	month_no = get_period(month)
 
+	if doctype == "Sales Invoice":
+		tax_template = 'Sales Taxes and Charges'
+	elif doctype == "Purchase Invoice":
+		tax_template = 'Purchase Taxes and Charges'
+ 
 	tax_amounts = frappe.db.sql("""
 		select s.gst_category, sum(t.tax_amount) as tax_amount, t.account_head
-		from `tab{doctype}` s , `tabSales Taxes and Charges` t
+		from `tab{doctype}` s , `tab{template}` t
 		where s.docstatus = 1 and t.parent = s.name and s.reverse_charge = %s and month(s.posting_date) = %s
 		group by t.account_head, s.gst_category
-		""".format(doctype=doctype), (reverse_charge, month_no), as_dict=1)
+		""".format(doctype=doctype, template=tax_template), (reverse_charge, month_no), as_dict=1)
 
 	tax_details = {}
 
 	for d in tax_amounts:
 		tax_details.setdefault(
 			(d.account_head,d.gst_category),{
-				"amount": d.get("tax_amount")
+				"amount": d.get("tax_amount"),
 			}
 		)
 
