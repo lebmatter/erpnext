@@ -81,7 +81,12 @@ class calculate_taxes_and_totals(object):
 					item.discount_amount = item.price_list_rate - item.rate
 
 				item.net_rate = item.rate
-				item.amount = flt(item.rate * item.qty,	item.precision("amount"))
+
+				if (self.doc.is_return and not item.qty):
+					item.amount = -1 * flt(item.rate or item.amount, item.precision("amount"))
+				else:
+					item.amount = flt(item.rate * item.qty,	item.precision("amount"))
+
 				item.net_amount = item.amount
 
 				self._set_in_company_currency(item, ["price_list_rate", "rate", "net_rate", "amount", "net_amount"])
