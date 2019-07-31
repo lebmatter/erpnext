@@ -6,7 +6,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "posting_date",
+  "transaction_date",
   "loan_start_date",
   "loan_period",
   "loan_end_date",
@@ -30,14 +30,6 @@
   "amended_from"
  ],
  "fields": [
-  {
-   "default": "Today",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Posting Date",
-   "reqd": 1
-  },
   {
    "fieldname": "loan_start_date",
    "fieldtype": "Date",
@@ -165,10 +157,18 @@
    "options": "Invoice Discounting",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Transaction Date",
+   "reqd": 1
   }
  ],
  "is_submittable": 1,
- "modified": "2019-05-30 19:08:21.199759",
+ "modified": "2019-07-31 12:57:14.837043",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Invoice Discounting",

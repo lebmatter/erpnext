@@ -19,9 +19,9 @@
   "sales_invoice_no",
   "purchase_receipt_no",
   "col2",
-  "posting_date",
-  "posting_time",
-  "set_posting_time",
+  "transaction_date",
+  "transaction_time",
+  "set_transaction_time",
   "inspection_required",
   "from_bom",
   "sb1",
@@ -200,33 +200,6 @@
    "oldfieldtype": "Column Break",
    "print_width": "50%",
    "width": "50%"
-  },
-  {
-   "default": "Today",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "label": "Posting Date",
-   "no_copy": 1,
-   "oldfieldname": "posting_date",
-   "oldfieldtype": "Date",
-   "search_index": 1
-  },
-  {
-   "fieldname": "posting_time",
-   "fieldtype": "Time",
-   "label": "Posting Time",
-   "no_copy": 1,
-   "oldfieldname": "posting_time",
-   "oldfieldtype": "Time",
-   "print_hide": 1
-  },
-  {
-   "default": "0",
-   "depends_on": "eval:doc.docstatus==0",
-   "fieldname": "set_posting_time",
-   "fieldtype": "Check",
-   "label": "Edit Posting Date and Time",
-   "print_hide": 1
   },
   {
    "default": "0",
@@ -613,12 +586,39 @@
   {
    "fieldname": "dimension_col_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "label": "Transaction Date",
+   "no_copy": 1,
+   "oldfieldname": "posting_date",
+   "oldfieldtype": "Date",
+   "search_index": 1
+  },
+  {
+   "fieldname": "transaction_time",
+   "fieldtype": "Time",
+   "label": "Transaction Time",
+   "no_copy": 1,
+   "oldfieldname": "posting_time",
+   "oldfieldtype": "Time",
+   "print_hide": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.docstatus==0",
+   "fieldname": "set_transaction_time",
+   "fieldtype": "Check",
+   "label": "Edit Transaction Date and Time",
+   "print_hide": 1
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 1,
  "is_submittable": 1,
- "modified": "2019-07-14 17:41:39.257508",
+ "modified": "2019-07-31 12:43:48.445772",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry",
@@ -684,7 +684,7 @@
    "write": 1
   }
  ],
- "search_fields": "posting_date, from_warehouse, to_warehouse, purpose, remarks",
+ "search_fields": "transaction_date, from_warehouse, to_warehouse, purpose, remarks",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

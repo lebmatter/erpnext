@@ -7,7 +7,7 @@
   "sales_invoice",
   "customer",
   "column_break_3",
-  "posting_date",
+  "transaction_date",
   "outstanding_amount"
  ],
  "fields": [
@@ -29,14 +29,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "sales_invoice.posting_date",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Date",
-   "read_only": 1
-  },
-  {
    "fetch_from": "sales_invoice.grand_total",
    "fieldname": "outstanding_amount",
    "fieldtype": "Currency",
@@ -48,10 +40,18 @@
   {
    "fieldname": "column_break_3",
    "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "sales_invoice.posting_date",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "read_only": 1
   }
  ],
  "istable": 1,
- "modified": "2019-05-30 19:27:29.436153",
+ "modified": "2019-07-31 12:55:26.084603",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Discounted Invoice",

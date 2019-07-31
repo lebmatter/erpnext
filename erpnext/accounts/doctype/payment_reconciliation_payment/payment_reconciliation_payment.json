@@ -2,10 +2,11 @@
  "creation": "2014-07-09 16:13:35.452759",
  "doctype": "DocType",
  "editable_grid": 1,
+ "engine": "InnoDB",
  "field_order": [
   "reference_type",
   "reference_name",
-  "posting_date",
+  "transaction_date",
   "is_advance",
   "reference_row",
   "col_break1",
@@ -33,12 +34,6 @@
    "in_list_view": 1,
    "label": "Reference Name",
    "options": "reference_type",
-   "read_only": 1
-  },
-  {
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "label": "Posting Date",
    "read_only": 1
   },
   {
@@ -112,10 +107,16 @@
   {
    "fieldname": "section_break_10",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "label": "Transaction Date",
+   "read_only": 1
   }
  ],
  "istable": 1,
- "modified": "2019-06-24 00:08:11.150796",
+ "modified": "2019-07-31 12:50:59.192737",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Reconciliation Payment",

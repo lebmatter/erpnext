@@ -8,7 +8,7 @@
  "field_order": [
   "section_break0",
   "column_break0",
-  "posting_date",
+  "transaction_date",
   "payroll_frequency",
   "column_break1",
   "company",
@@ -52,13 +52,6 @@
    "fieldname": "column_break0",
    "fieldtype": "Column Break",
    "width": "50%"
-  },
-  {
-   "default": "Today",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "label": "Posting Date",
-   "reqd": 1
   },
   {
    "depends_on": "eval:doc.salary_slip_based_on_timesheet == 0",
@@ -248,11 +241,18 @@
   {
    "fieldname": "dimension_col_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "label": "Transaction Date",
+   "reqd": 1
   }
  ],
  "icon": "fa fa-cog",
  "is_submittable": 1,
- "modified": "2019-05-25 22:47:49.977955",
+ "modified": "2019-07-31 13:03:19.208238",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Payroll Entry",

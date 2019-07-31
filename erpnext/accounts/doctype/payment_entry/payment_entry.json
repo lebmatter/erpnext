@@ -10,7 +10,7 @@
   "payment_type",
   "payment_order_status",
   "column_break_5",
-  "posting_date",
+  "transaction_date",
   "company",
   "mode_of_payment",
   "party_section",
@@ -104,15 +104,6 @@
   {
    "fieldname": "column_break_5",
    "fieldtype": "Column Break"
-  },
-  {
-   "bold": 1,
-   "default": "Today",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Posting Date",
-   "reqd": 1
   },
   {
    "fieldname": "company",
@@ -563,10 +554,19 @@
   {
    "fieldname": "dimension_col_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "bold": 1,
+   "default": "Today",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Transaction Date",
+   "reqd": 1
   }
  ],
  "is_submittable": 1,
- "modified": "2019-05-27 15:53:21.108857",
+ "modified": "2019-07-31 13:00:20.829064",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",

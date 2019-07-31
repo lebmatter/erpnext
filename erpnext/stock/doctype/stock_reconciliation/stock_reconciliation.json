@@ -4,14 +4,15 @@
  "description": "This tool helps you to update or fix the quantity and valuation of stock in the system. It is typically used to synchronise the system values and what actually exists in your warehouses.",
  "doctype": "DocType",
  "document_type": "Document",
+ "engine": "InnoDB",
  "field_order": [
   "naming_series",
   "company",
   "purpose",
   "col1",
-  "posting_date",
-  "posting_time",
-  "set_posting_time",
+  "transaction_date",
+  "transaction_time",
+  "set_transaction_time",
   "sb9",
   "items",
   "section_break_9",
@@ -53,31 +54,6 @@
   {
    "fieldname": "col1",
    "fieldtype": "Column Break"
-  },
-  {
-   "default": "Today",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Posting Date",
-   "oldfieldname": "reconciliation_date",
-   "oldfieldtype": "Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "posting_time",
-   "fieldtype": "Time",
-   "in_list_view": 1,
-   "label": "Posting Time",
-   "oldfieldname": "reconciliation_time",
-   "oldfieldtype": "Time",
-   "reqd": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "set_posting_time",
-   "fieldtype": "Check",
-   "label": "Edit Posting Date and Time"
   },
   {
    "fieldname": "sb9",
@@ -147,13 +123,38 @@
   {
    "fieldname": "dimension_col_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Transaction Date",
+   "oldfieldname": "reconciliation_date",
+   "oldfieldtype": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "transaction_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Transaction Time",
+   "oldfieldname": "reconciliation_time",
+   "oldfieldtype": "Time",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "set_transaction_time",
+   "fieldtype": "Check",
+   "label": "Edit Transaction Date and Time"
   }
  ],
  "icon": "fa fa-upload-alt",
  "idx": 1,
  "is_submittable": 1,
  "max_attachments": 1,
- "modified": "2019-05-26 09:03:09.542141",
+ "modified": "2019-07-31 13:01:43.503707",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Reconciliation",
@@ -172,7 +173,7 @@
    "write": 1
   }
  ],
- "search_fields": "posting_date",
+ "search_fields": "transaction_date",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC"

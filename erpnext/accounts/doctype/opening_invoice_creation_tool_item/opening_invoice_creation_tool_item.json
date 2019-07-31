@@ -8,7 +8,7 @@
   "party",
   "temporary_opening_account",
   "column_break_3",
-  "posting_date",
+  "transaction_date",
   "due_date",
   "section_break_5",
   "item_name",
@@ -45,13 +45,6 @@
   {
    "fieldname": "column_break_3",
    "fieldtype": "Column Break"
-  },
-  {
-   "default": "Today",
-   "fieldname": "posting_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Posting Date"
   },
   {
    "default": "Today",
@@ -103,10 +96,17 @@
   {
    "fieldname": "dimension_col_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Transaction Date"
   }
  ],
  "istable": 1,
- "modified": "2019-07-25 15:00:00.460695",
+ "modified": "2019-07-31 11:06:36.946895",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Opening Invoice Creation Tool Item",
