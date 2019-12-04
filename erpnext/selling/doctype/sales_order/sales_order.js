@@ -112,8 +112,6 @@ erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend(
 		let allow_delivery = false;
 
 		if (doc.docstatus==1) {
-			this.frm.add_custom_button(__('Pick List'), () => this.create_pick_list(), __('Create'));
-
 			if(this.frm.has_perm("submit")) {
 				if(doc.status === 'On Hold') {
 				   // un-hold
@@ -136,7 +134,7 @@ erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend(
 			if(doc.status !== 'Closed') {
 				if(doc.status !== 'On Hold') {
 
-					allow_delivery = this.frm.doc.items.some(item => item.delivered_by_supplier === 0 && item.qty > flt(item.delivered_qty)) 
+					allow_delivery = this.frm.doc.items.some(item => item.delivered_by_supplier === 0 && item.qty > flt(item.delivered_qty))
 						&& !this.frm.doc.skip_delivery_note
 
 					if (this.frm.has_perm("submit")) {
@@ -148,6 +146,7 @@ erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend(
 						}
 					}
 
+					this.frm.add_custom_button(__('Pick List'), () => this.create_pick_list(), __('Create'));
 					// delivery note
 					if(flt(doc.per_delivered, 6) < 100 && ["Sales", "Shopping Cart"].indexOf(doc.order_type)!==-1 && allow_delivery) {
 						this.frm.add_custom_button(__('Delivery Note'), () => this.make_delivery_note_based_on_delivery_date(), __('Create'));
@@ -361,7 +360,7 @@ erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend(
 	},
 
 	toggle_delivery_date: function() {
-		this.frm.fields_dict.items.grid.toggle_reqd("delivery_date", 
+		this.frm.fields_dict.items.grid.toggle_reqd("delivery_date",
 			(this.frm.doc.order_type == "Sales" && !this.frm.doc.skip_delivery_note));
 	},
 
