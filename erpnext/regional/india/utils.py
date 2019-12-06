@@ -7,6 +7,8 @@ from erpnext.controllers.taxes_and_totals import get_itemised_tax, get_itemised_
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from erpnext.hr.utils import get_salary_assignment
 from erpnext.hr.doctype.salary_structure.salary_structure import make_salary_slip
+from erpnext.regional.india import number_state_mapping
+from six import string_types
 
 def validate_gstin_for_india(doc, method):
 	if hasattr(doc, 'gst_state') and doc.gst_state:
@@ -45,6 +47,14 @@ def validate_gstin_for_india(doc, method):
 		if doc.gst_state_number != doc.gstin[:2]:
 			frappe.throw(_("Invalid GSTIN! First 2 digits of GSTIN should match with State number {0}.")
 				.format(doc.gst_state_number))
+
+def update_gst_category(doc, method):
+	for link in doc.links:
+		if link.link_doctype in ['Customer', 'Supplier']:
+			if doc.get('gstin'):
+				frappe.db.sql("""
+					UPDATE `tab{0}` SET gst_category = %s WHERE name = %s AND gst_category = 'Unregistered'
+				""".format(link.link_doctype), ("Registered Regular", link.link_name)) #nosec
 
 def set_gst_state_and_state_number(doc):
 	if not doc.gst_state:
@@ -125,9 +135,9 @@ def test_method():
 def get_place_of_supply(out, doctype):
 	if not frappe.get_meta('Address').has_field('gst_state'): return
 
-	if doctype in ("Sales Invoice", "Delivery Note"):
+	if doctype in ("Sales Invoice", "Delivery Note", "Sales Order"):
 		address_name = out.shipping_address_name or out.customer_address
-	elif doctype == "Purchase Invoice":
+	elif doctype in ("Purchase Invoice", "Purchase Order", "Purchase Receipt"):
 		address_name = out.shipping_address or out.supplier_address
 
 	if address_name:
@@ -135,31 +145,93 @@ def get_place_of_supply(out, doctype):
 		if address and address.gst_state and address.gst_state_number:
 			return cstr(address.gst_state_number) + "-" + cstr(address.gst_state)
 
-def get_regional_address_details(out, doctype, company):
+@frappe.whitelist()
+def get_regional_address_details(out, doctype, company, return_out=None):
+
+	if isinstance(out, string_types):
+		out = json.loads(out)
+		out = frappe._dict(out)
+
 	out.place_of_supply = get_place_of_supply(out, doctype)
-
-	if not out.place_of_supply: return
-
-	if doctype in ("Sales Invoice", "Delivery Note"):
+	if doctype in ("Sales Invoice", "Delivery Note", "Sales Order"):
 		master_doctype = "Sales Taxes and Charges Template"
+
+		get_tax_template_for_sez(out, master_doctype, company, 'Customer')
+		get_tax_template_based_on_category(master_doctype, company, out)
+
+		if out.get('taxes_and_charges') and return_out:
+			return out
+
 		if not out.company_gstin:
 			return
-	elif doctype == "Purchase Invoice":
+
+	elif doctype in ("Purchase Invoice", "Purchase Order", "Purchase Receipt"):
 		master_doctype = "Purchase Taxes and Charges Template"
+
+		get_tax_template_for_sez(out, master_doctype, company, 'Supplier')
+		get_tax_template_based_on_category(master_doctype, company, out)
+
+		if out.get('taxes_and_charges') and return_out:
+			return out
+
 		if not out.supplier_gstin:
 			return
 
-	if ((doctype in ("Sales Invoice", "Delivery Note") and out.company_gstin
-		and out.company_gstin[:2] != out.place_of_supply[:2]) or (doctype == "Purchase Invoice"
-		and out.supplier_gstin and out.supplier_gstin[:2] != out.place_of_supply[:2])):
-		default_tax = frappe.db.get_value(master_doctype, {"company": company, "is_inter_state":1, "disabled":0})
+	if not out.place_of_supply: return
+
+	if ((doctype in ("Sales Invoice", "Delivery Note", "Sales Order") and out.company_gstin
+		and out.company_gstin[:2] != out.place_of_supply[:2]) or (doctype in ("Purchase Invoice",
+		"Purchase Order", "Purchase Receipt") and out.supplier_gstin and out.supplier_gstin[:2] != out.place_of_supply[:2])):
+		default_tax = get_tax_template(master_doctype, company, 1, out.company_gstin[:2])
 	else:
-		default_tax = frappe.db.get_value(master_doctype, {"company": company, "disabled":0, "is_default": 1})
+		default_tax = get_tax_template(master_doctype, company, 0, out.company_gstin[:2])
 
 	if not default_tax:
 		return
 	out["taxes_and_charges"] = default_tax
 	out.taxes = get_taxes_and_charges(master_doctype, default_tax)
+
+	if return_out:
+		return out
+
+def get_tax_template_based_on_category(master_doctype, company, out):
+	if not out.get('tax_category'):
+		return
+
+	default_tax = frappe.db.get_value(master_doctype, {'company': company, 'tax_category': out.get('tax_category')},
+		'name')
+
+	if default_tax:
+		out["taxes_and_charges"] = default_tax
+		out.taxes = get_taxes_and_charges(master_doctype, default_tax)
+
+def get_tax_template(master_doctype, company, is_inter_state, company_gstin):
+	tax_categories = frappe.get_all('Tax Category', fields = ['name', 'is_inter_state', 'gst_state'],
+		filters = {'is_inter_state': is_inter_state})
+
+	default_tax = ''
+
+	for tax_category in tax_categories:
+		if tax_category.gst_state == number_state_mapping[company_gstin] or \
+	 		(not default_tax and not tax_category.gst_state):
+			default_tax = frappe.db.get_value(master_doctype,
+				{'disabled': 0, 'tax_category': tax_category.name}, 'name')
+
+	return default_tax
+
+def get_tax_template_for_sez(out, master_doctype, company, party_type):
+
+	gst_details = frappe.db.get_value(party_type, {'name': out.get(frappe.scrub(party_type))},
+			['gst_category', 'export_type'], as_dict=1)
+
+	if gst_details:
+		if gst_details.gst_category == 'SEZ' and gst_details.export_type == 'With Payment of Tax':
+			default_tax = frappe.db.get_value(master_doctype, {"company": company, "is_inter_state":1, "disabled":0,
+				"gst_state": number_state_mapping[out.company_gstin[:2]]})
+
+			out["taxes_and_charges"] = default_tax
+			out.taxes = get_taxes_and_charges(master_doctype, default_tax)
+
 
 def calculate_annual_eligible_hra_exemption(doc):
 	basic_component = frappe.get_cached_value('Company',  doc.company,  "basic_component")
@@ -555,7 +627,7 @@ def get_gst_accounts(company, account_wise=False):
 		filters={"parent": "GST Settings", "company": company},
 		fields=["cgst_account", "sgst_account", "igst_account", "cess_account"])
 
-	if not gst_settings_accounts:
+	if not gst_settings_accounts and not frappe.flags.in_test:
 		frappe.throw(_("Please set GST Accounts in GST Settings"))
 
 	for d in gst_settings_accounts:
