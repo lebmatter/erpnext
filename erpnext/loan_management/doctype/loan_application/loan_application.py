@@ -42,7 +42,7 @@ class LoanApplication(Document):
 			frappe.throw(_("Loan Amount exceeds maximum loan amount of {0} as per proposed securities").format(self.maximum_loan_amount))
 
 	def check_sanctioned_amount_limit(self):
-		total_loan_amount = get_total_loan_amount(self.applicant_type, self.applicant, self.company)
+		total_loan_amount = get_total_loan_amount(self.applicant_type, self.applicant, self.company) or 0
 		sanctioned_amount_limit = get_sanctioned_amount_limit(self.applicant_type, self.applicant, self.company)
 
 		if sanctioned_amount_limit and self.loan_amount + total_loan_amount > sanctioned_amount_limit:
